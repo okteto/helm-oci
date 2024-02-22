@@ -1,0 +1,25 @@
+deploy:
+  remote: true
+  commands:
+  - name: Package the chart
+    command: helm package ./chart/example
+  - name: Get chart metadata
+    command: |
+      {
+        echo export CHART_NAME="$(helm show chart ./chart/example | grep name | cut -d ' ' -f2-)"
+        echo export CHART_VERSION="$(helm show chart ./chart/example | grep version | cut -d ' ' -f2-)"
+      } >> "$OKTETO_ENV"
+  - name: Push chart to remote registry
+    command: >
+      helm push 
+      ${CHART_NAME}-${CHART_VERSION}.tgz
+      oci://${REGISTRY_HOST}/${REGISTRY_REPO}
+  - name: Deploy chart to remote cluster
+    command: >
+      helm upgrade
+      --install 
+      ${OKTETO_NAME}
+      oci://${REGISTRY_HOST}/${REGISTRY_REPO}/${CHART_NAME}
+      --version ${CHART_VERSION}
+      --namespace ${OKTETO_NAMESPACE}
+      --wait
